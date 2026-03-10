@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema de gestión de almacén online">
+    <title>Almacén Online</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <header>
+        <h1>Almacén Online</h1>
+    </header>
+    
+    <main>
+        <section class="form-section">
+            <h2>Agregar Producto</h2>
+            <form id="productForm" novalidate>
+                <div class="form-group">
+                    <label for="product">Producto:</label>
+                    <input 
+                        type="text" 
+                        id="product" 
+                        name="product" 
+                        required 
+                        minlength="3"
+                        autocomplete="off"
+                        aria-describedby="product-help">
+                    <small id="product-help">Mínimo 3 caracteres</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="quantity">Cantidad:</label>
+                    <input 
+                        type="number" 
+                        id="quantity" 
+                        name="quantity" 
+                        required
+                        aria-describedby="quantity-help">
+                    <small id="quantity-help">Puede ser negativo</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="price">Precio:</label>
+                    <input 
+                        type="number" 
+                        id="price" 
+                        name="price" 
+                        step="0.01"
+                        min="0"
+                        required
+                        aria-describedby="price-help">
+                    <small id="price-help">Debe ser positivo</small>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit">Dar de alta</button>
+                    <button type="reset">Limpiar</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="table-section">
+            <h2>Productos en el Almacén</h2>
+            <div class="table-container">
+                <table id="productosTable">
+                    <thead>
+                        <tr>
+                            <th scope="col">Producto</th>
+                            <th scope="col">Cantidad</th>
+                            <th scope="col">Precio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <p>&copy; 2026 Almacén Online - Sistema de Gestión</p>
+    </footer>
+</body>
+</html>

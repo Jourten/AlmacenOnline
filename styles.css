@@ -1,0 +1,321 @@
+/* CSS Custom Properties (Variables) */
+:root {
+    --primary-color: #2c3e50;
+    --secondary-color: #3498db;
+    --success-color: #27ae60;
+    --danger-color: #e74c3c;
+    --light-bg: #ecf0f1;
+    --white: #ffffff;
+    --border-color: #bdc3c7;
+    --hover-color: #34495e;
+    --table-stripe: #f9f9f9;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --border-radius: 8px;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 2rem;
+}
+
+/* Reset y estilos base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    line-height: 1.6;
+    color: var(--primary-color);
+    background-color: var(--light-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+header {
+    background-color: var(--primary-color);
+    color: var(--white);
+    padding: var(--spacing-lg);
+    text-align: center;
+    box-shadow: var(--shadow);
+}
+
+header h1 {
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+    font-weight: 600;
+}
+
+/* Main content */
+main {
+    flex: 1;
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+    display: grid;
+    gap: var(--spacing-lg);
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+    main {
+        grid-template-columns: 1fr 2fr;
+    }
+}
+
+/* Sections */
+section {
+    background: var(--white);
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+section h2 {
+    color: var(--primary-color);
+    margin-bottom: var(--spacing-md);
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+    border-bottom: 3px solid var(--secondary-color);
+    padding-bottom: var(--spacing-sm);
+}
+
+/* Form styles */
+.form-section {
+    grid-column: 1;
+}
+
+#productForm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+label {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 0.95rem;
+}
+
+input[type="text"],
+input[type="number"] {
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+input[type="text"]:invalid,
+input[type="number"]:invalid {
+    border-color: var(--danger-color);
+}
+
+input[type="text"]:valid,
+input[type="number"]:valid {
+    border-color: var(--success-color);
+}
+
+small {
+    color: #7f8c8d;
+    font-size: 0.85rem;
+}
+
+/* Ocultar flechas de inputs tipo número */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Buttons */
+.form-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+}
+
+button {
+    flex: 1;
+    padding: 0.875rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+button[type="submit"] {
+    background-color: var(--secondary-color);
+    color: var(--white);
+}
+
+button[type="submit"]:hover {
+    background-color: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+button[type="submit"]:active {
+    transform: translateY(0);
+}
+
+button[type="reset"] {
+    background-color: var(--border-color);
+    color: var(--primary-color);
+}
+
+button[type="reset"]:hover {
+    background-color: #95a5a6;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Table section */
+.table-section {
+    grid-column: 1 / -1;
+}
+
+@media (min-width: 768px) {
+    .table-section {
+        grid-column: 2;
+        grid-row: 1;
+    }
+}
+
+.table-container {
+    overflow-x: auto;
+    margin-top: var(--spacing-md);
+}
+
+/* Table styles */
+#productosTable {
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+#productosTable thead {
+    background-color: var(--primary-color);
+    color: var(--white);
+}
+
+#productosTable th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+#productosTable td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#productosTable tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+#productosTable tbody tr:nth-child(even) {
+    background-color: var(--table-stripe);
+}
+
+#productosTable tbody tr:hover {
+    background-color: #e8f4f8;
+    cursor: pointer;
+}
+
+#productosTable tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Empty state */
+#productosTable tbody:empty::after {
+    content: "No hay productos en el almacén";
+    display: block;
+    text-align: center;
+    padding: 2rem;
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+/* Footer */
+footer {
+    background-color: var(--primary-color);
+    color: var(--white);
+    text-align: center;
+    padding: var(--spacing-md);
+    margin-top: auto;
+}
+
+footer p {
+    font-size: 0.9rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767px) {
+    main {
+        padding: var(--spacing-md);
+    }
+    
+    section {
+        padding: var(--spacing-md);
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    #productosTable {
+        font-size: 0.9rem;
+    }
+    
+    #productosTable th,
+    #productosTable td {
+        padding: 0.75rem;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+section {
+    animation: fadeIn 0.5s ease;
+}
