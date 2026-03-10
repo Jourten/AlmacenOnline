@@ -304,6 +304,238 @@ footer p {
     }
 }
 
+/* Delete button styles */
+.btn-delete {
+    background-color: var(--danger-color);
+    color: var(--white);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: calc(var(--border-radius) / 2);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btn-delete:hover {
+    background-color: #c0392b;
+    transform: scale(1.05);
+}
+
+.btn-delete:active {
+    transform: scale(0.98);
+}
+
+.btn-delete:focus {
+    outline: 2px solid var(--danger-color);
+    outline-offset: 2px;
+}
+
+/* Edit button styles */
+.btn-edit {
+    background-color: var(--secondary-color);
+    color: var(--white);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: calc(var(--border-radius) / 2);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btn-edit:hover {
+    background-color: #2980b9;
+    transform: scale(1.05);
+}
+
+/* Save and Cancel buttons */
+.btn-save {
+    background-color: var(--success-color);
+    color: var(--white);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: calc(var(--border-radius) / 2);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btn-save:hover {
+    background-color: #229954;
+    transform: scale(1.05);
+}
+
+.btn-cancel {
+    background-color: #95a5a6;
+    color: var(--white);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: calc(var(--border-radius) / 2);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btn-cancel:hover {
+    background-color: #7f8c8d;
+    transform: scale(1.05);
+}
+
+/* Quick action buttons (stock and price adjustments) */
+.quick-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-quick {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--primary-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    min-width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-quick:hover {
+    background-color: var(--light-bg);
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+    transform: scale(1.1);
+}
+
+.btn-quick.increase {
+    color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.btn-quick.increase:hover {
+    background-color: #d5f4e6;
+}
+
+.btn-quick.decrease {
+    color: var(--danger-color);
+    border-color: var(--danger-color);
+}
+
+.btn-quick.decrease:hover {
+    background-color: #fadbd8;
+}
+
+/* Quantity and price cells with controls */
+.quantity-cell,
+.price-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: space-between;
+}
+
+.value-display {
+    font-weight: 600;
+    min-width: 60px;
+}
+
+/* Actions column */
+#productosTable th:last-child,
+#productosTable td:last-child {
+    text-align: center;
+    min-width: 200px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Edit row styles */
+.edit-row {
+    background-color: #fff9e6 !important;
+    box-shadow: inset 0 0 0 2px var(--secondary-color);
+}
+
+.edit-row input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid var(--secondary-color);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.edit-row input:focus {
+    outline: none;
+    border-color: var(--success-color);
+    box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
+}
+
+.edit-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+/* Template hidden by default */
+template {
+    display: none;
+}
+
+/* Delete animation */
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+}
+
+.deleting {
+    animation: fadeOut 0.3s ease forwards;
+}
+
+/* Highlight animation for updated values */
+@keyframes highlight {
+    0% {
+        background-color: #f1c40f;
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+.value-updated {
+    animation: highlight 0.6s ease;
+}
+
 /* Animations */
 @keyframes fadeIn {
     from {

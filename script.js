@@ -25,6 +25,98 @@ class Almacen {
     }
 
     /**
+     * Delete a product by ID
+     */
+    eliminarProducto(id) {
+        const index = this.productos.findIndex(p => p.id === id);
+        
+        if (index === -1) {
+            console.error('Product not found');
+            return false;
+        }
+        
+        const productoEliminado = this.productos[index];
+        this.productos.splice(index, 1);
+        this.guardarEnLocalStorage();
+        this.mostrarProductos();
+        
+        return productoEliminado;
+    }
+
+    /**
+     * Update a product by ID
+     */
+    actualizarProducto(id, nuevosDatos) {
+        const index = this.productos.findIndex(p => p.id === id);
+        
+        if (index === -1) {
+            console.error('Product not found');
+            return false;
+        }
+        
+        // Update product data
+        this.productos[index] = {
+            ...this.productos[index],
+            nombre: nuevosDatos.nombre,
+            cantidad: parseInt(nuevosDatos.cantidad, 10),
+            precio: parseFloat(nuevosDatos.precio),
+            fechaModificacion: new Date().toISOString()
+        };
+        
+        this.guardarEnLocalStorage();
+        this.mostrarProductos();
+        
+        return this.productos[index];
+    }
+
+    /**
+     * Adjust product quantity (increase or decrease)
+     */
+    ajustarCantidad(id, ajuste) {
+        const producto = this.productos.find(p => p.id === id);
+        
+        if (!producto) {
+            console.error('Product not found');
+            return false;
+        }
+        
+        producto.cantidad += ajuste;
+        producto.fechaModificacion = new Date().toISOString();
+        
+        this.guardarEnLocalStorage();
+        this.mostrarProductos();
+        
+        return producto;
+    }
+
+    /**
+     * Adjust product price (increase or decrease)
+     */
+    ajustarPrecio(id, ajuste) {
+        const producto = this.productos.find(p => p.id === id);
+        
+        if (!producto) {
+            console.error('Product not found');
+            return false;
+        }
+        
+        producto.precio = Math.max(0, producto.precio + ajuste);
+        producto.fechaModificacion = new Date().toISOString();
+        
+        this.guardarEnLocalStorage();
+        this.mostrarProductos();
+        
+        return producto;
+    }
+
+    /**
+     * Get product by ID
+     */
+    obtenerProducto(id) {
+        return this.productos.find(p => p.id === id);
+    }
+
+    /**
      * Check if product already exists (case-insensitive)
      */
     productoExiste(nombre) {
@@ -117,14 +209,261 @@ class Almacen {
         
         row.innerHTML = `
             <td>${this.escaparHTML(producto.nombre)}</td>
-            <td>${producto.cantidad}</td>
-            <td>${this.formatearPrecio(producto.precio)}</td>
+            <td>
+                <div class="quantity-cell">
+                    <span class="value-display">${producto.cantidad}</span>
+                    <div class="quick-controls">
+                        <button class="btn-quick decrease" data-id="${producto.id}" data-action="cantidad-menos" title="Reducir cantidad" aria-label="Reducir cantidad">-</button>
+                        <button class="btn-quick increase" data-id="${producto.id}" data-action="cantidad-mas" title="Aumentar cantidad" aria-label="Aumentar cantidad">+</button>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="price-cell">
+                    <span class="value-display">${this.formatearPrecio(producto.precio)}</span>
+                    <div class="quick-controls">
+                        <button class="btn-quick decrease" data-id="${producto.id}" data-action="precio-menos" title="Reducir precio €1" aria-label="Reducir precio">-</button>
+                        <button class="btn-quick increase" data-id="${producto.id}" data-action="precio-mas" title="Aumentar precio €1" aria-label="Aumentar precio">+</button>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-edit" data-id="${producto.id}" aria-label="Editar ${this.escaparHTML(producto.nombre)}">
+                        ✏️ Editar
+                    </button>
+                    <button class="btn-delete" data-id="${producto.id}" aria-label="Eliminar ${this.escaparHTML(producto.nombre)}">
+                        🗑️ Eliminar
+                    </button>
+                </div>
+            </td>
         `;
         
         // Add data attribute for potential future use
         row.dataset.productId = producto.id;
         
+        // Add event listeners for all buttons
+        this.agregarEventListenersAFila(row, producto);
+        
         return row;
+    }
+
+    /**
+     * Add event listeners to row buttons
+     */
+    agregarEventListenersAFila(row, producto) {
+        // Edit button
+        const editBtn = row.querySelector('.btn-edit');
+        editBtn?.addEventListener('click', () => this.manejarEdicion(producto, row));
+        
+        // Delete button
+        const deleteBtn = row.querySelector('.btn-delete');
+        deleteBtn?.addEventListener('click', () => this.manejarEliminacion(producto));
+        
+        // Quick control buttons
+        const quickBtns = row.querySelectorAll('.btn-quick');
+        quickBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = btn.dataset.action;
+                const id = parseInt(btn.dataset.id, 10);
+                this.manejarAjusteRapido(id, action, row);
+            });
+        });
+    }
+
+    /**
+     * Handle quick adjustments (stock and price)
+     */
+    manejarAjusteRapido(id, action, row) {
+        let resultado;
+        
+        switch(action) {
+            case 'cantidad-mas':
+                resultado = this.ajustarCantidad(id, 1);
+                this.animarCambio(row.querySelector('.quantity-cell .value-display'));
+                break;
+            case 'cantidad-menos':
+                resultado = this.ajustarCantidad(id, -1);
+                this.animarCambio(row.querySelector('.quantity-cell .value-display'));
+                break;
+            case 'precio-mas':
+                resultado = this.ajustarPrecio(id, 1);
+                this.animarCambio(row.querySelector('.price-cell .value-display'));
+                break;
+            case 'precio-menos':
+                resultado = this.ajustarPrecio(id, -1);
+                this.animarCambio(row.querySelector('.price-cell .value-display'));
+                break;
+        }
+        
+        if (resultado) {
+            console.log(`Quick adjustment applied: ${action}`);
+        }
+    }
+
+    /**
+     * Animate value change
+     */
+    animarCambio(element) {
+        if (element) {
+            element.classList.remove('value-updated');
+            // Force reflow
+            void element.offsetWidth;
+            element.classList.add('value-updated');
+        }
+    }
+
+    /**
+     * Handle product editing
+     */
+    manejarEdicion(producto, row) {
+        // Check if already editing
+        if (document.querySelector('.edit-row')) {
+            alert('Ya hay un producto en edición. Guarde o cancele primero.');
+            return;
+        }
+        
+        // Get edit row template
+        const template = document.getElementById('editRowTemplate');
+        if (!template) {
+            console.error('Edit template not found');
+            return;
+        }
+        
+        // Clone template
+        const editRow = template.content.cloneNode(true).querySelector('tr');
+        
+        // Fill with current values
+        editRow.querySelector('.edit-nombre').value = producto.nombre;
+        editRow.querySelector('.edit-cantidad').value = producto.cantidad;
+        editRow.querySelector('.edit-precio').value = producto.precio;
+        
+        // Store original row and product ID
+        editRow.dataset.productId = producto.id;
+        editRow.dataset.originalRowIndex = Array.from(row.parentNode.children).indexOf(row);
+        
+        // Add event listeners
+        const saveBtn = editRow.querySelector('.btn-save');
+        const cancelBtn = editRow.querySelector('.btn-cancel');
+        
+        saveBtn.addEventListener('click', () => this.guardarEdicion(editRow, row));
+        cancelBtn.addEventListener('click', () => this.cancelarEdicion(editRow, row));
+        
+        // Handle Enter key to save
+        editRow.querySelectorAll('input').forEach(input => {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.guardarEdicion(editRow, row);
+                } else if (e.key === 'Escape') {
+                    this.cancelarEdicion(editRow, row);
+                }
+            });
+        });
+        
+        // Replace row with edit row
+        row.replaceWith(editRow);
+        
+        // Focus first input
+        editRow.querySelector('.edit-nombre').focus();
+    }
+
+    /**
+     * Save product edit
+     */
+    guardarEdicion(editRow, originalRow) {
+        const id = parseInt(editRow.dataset.productId, 10);
+        const nombre = editRow.querySelector('.edit-nombre').value.trim();
+        const cantidad = editRow.querySelector('.edit-cantidad').value;
+        const precio = editRow.querySelector('.edit-precio').value;
+        
+        // Validate
+        if (!nombre || nombre.length < 3) {
+            alert('El nombre del producto debe tener al menos 3 caracteres.');
+            editRow.querySelector('.edit-nombre').focus();
+            return;
+        }
+        
+        if (!cantidad || !precio) {
+            alert('Cantidad y precio son obligatorios.');
+            return;
+        }
+        
+        const cantidadNum = parseInt(cantidad, 10);
+        const precioNum = parseFloat(precio);
+        
+        if (isNaN(cantidadNum) || isNaN(precioNum)) {
+            alert('Cantidad y precio deben ser números válidos.');
+            return;
+        }
+        
+        if (precioNum < 0) {
+            alert('El precio no puede ser negativo.');
+            editRow.querySelector('.edit-precio').focus();
+            return;
+        }
+        
+        // Check if name already exists (excluding current product)
+        const producto = this.obtenerProducto(id);
+        if (nombre.toLowerCase() !== producto.nombre.toLowerCase()) {
+            if (this.productoExiste(nombre)) {
+                alert(`El producto "${nombre}" ya existe en el almacén.`);
+                editRow.querySelector('.edit-nombre').focus();
+                return;
+            }
+        }
+        
+        // Update product
+        const resultado = this.actualizarProducto(id, {
+            nombre,
+            cantidad: cantidadNum,
+            precio: precioNum
+        });
+        
+        if (resultado) {
+            console.log(`Product "${nombre}" updated successfully`);
+        }
+    }
+
+    /**
+     * Cancel product edit
+     */
+    cancelarEdicion(editRow, originalRow) {
+        // Simply refresh the table
+        this.mostrarProductos();
+    }
+
+    /**
+     * Handle product deletion with confirmation
+     */
+    manejarEliminacion(producto) {
+        const confirmacion = confirm(
+            `¿Está seguro de que desea eliminar el producto "${producto.nombre}"?\n\n` +
+            `Cantidad: ${producto.cantidad}\n` +
+            `Precio: ${this.formatearPrecio(producto.precio)}`
+        );
+        
+        if (confirmacion) {
+            // Find the row and add animation
+            const row = document.querySelector(`tr[data-product-id="${producto.id}"]`);
+            
+            if (row) {
+                row.classList.add('deleting');
+                
+                // Wait for animation to complete before removing
+                setTimeout(() => {
+                    const productoEliminado = this.eliminarProducto(producto.id);
+                    
+                    if (productoEliminado) {
+                        console.log(`Product "${productoEliminado.nombre}" deleted successfully`);
+                    }
+                }, 300); // Match animation duration
+            } else {
+                // If row not found, delete immediately
+                this.eliminarProducto(producto.id);
+            }
+        }
     }
 
     /**

@@ -70,18 +70,36 @@
                             <th scope="col">Producto</th>
                             <th scope="col">Cantidad</th>
                             <th scope="col">Precio</th>
+                            <th scope="col">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        
+                        <!-- Los productos se cargarán dinámicamente -->
                     </tbody>
                 </table>
+                <template id="editRowTemplate">
+                    <tr class="edit-row">
+                        <td>
+                            <input type="text" class="edit-nombre" required minlength="3">
+                        </td>
+                        <td>
+                            <input type="number" class="edit-cantidad" required>
+                        </td>
+                        <td>
+                            <input type="number" class="edit-precio" step="0.01" min="0" required>
+                        </td>
+                        <td class="edit-actions">
+                            <button class="btn-save" type="button">💾 Guardar</button>
+                            <button class="btn-cancel" type="button">❌ Cancelar</button>
+                        </td>
+                    </tr>
+                </template>
             </div>
         </section>
     </main>
     
     <footer>
-        <p>&copy; 2026 Almacén Online - Sistema de Gestión</p>
+        <p>&copy; 2024 Almacén Online - Sistema de Gestión</p>
     </footer>
 </body>
 </html>
