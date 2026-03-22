@@ -117,6 +117,98 @@ class Almacen {
     }
 
     /**
+     * Export inventory to JSON file
+     */
+    exportarJSON() {
+        const data = {
+            productos: this.productos,
+            fechaExportacion: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        const jsonString = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `almacen_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        console.log('Inventory exported successfully');
+        return true;
+    }
+
+    /**
+     * Import inventory from JSON file
+     */
+    async importarJSON(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // Validate JSON structure
+                    if (!data.productos || !Array.isArray(data.productos)) {
+                        throw new Error('Formato JSON inválido. Debe contener un array "productos".');
+                    }
+                    
+                    // Validate each product
+                    const productosValidos = data.productos.filter(p => {
+                        return p.nombre && 
+                               typeof p.cantidad === 'number' && 
+                               typeof p.precio === 'number';
+                    });
+                    
+                    if (productosValidos.length === 0) {
+                        throw new Error('No se encontraron productos válidos en el archivo.');
+                    }
+                    
+                    // Add IDs if missing
+                    this.productos = productosValidos.map((p, index) => ({
+                        id: p.id || Date.now() + index,
+                        nombre: p.nombre,
+                        cantidad: parseInt(p.cantidad, 10),
+                        precio: parseFloat(p.precio),
+                        fechaCreacion: p.fechaCreacion || new Date().toISOString(),
+                        fechaModificacion: p.fechaModificacion
+                    }));
+                    
+                    this.guardarEnLocalStorage();
+                    this.mostrarProductos();
+                    
+                    console.log(`Imported ${this.productos.length} products`);
+                    resolve(this.productos.length);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            
+            reader.onerror = () => {
+                reject(new Error('Error al leer el archivo'));
+            };
+            
+            reader.readAsText(file);
+        });
+    }
+
+    /**
+     * Clear entire inventory
+     */
+    limpiarInventario() {
+        this.productos = [];
+        this.guardarEnLocalStorage();
+        this.mostrarProductos();
+        console.log('Inventory cleared');
+        return true;
+    }
+
+    /**
      * Check if product already exists (case-insensitive)
      */
     productoExiste(nombre) {
@@ -199,6 +291,45 @@ class Almacen {
             const row = this.crearFilaProducto(producto);
             tbody.appendChild(row);
         });
+        
+        // Update summary statistics
+        this.actualizarResumen();
+    }
+
+    /**
+     * Calculate and update inventory summary
+     */
+    actualizarResumen() {
+        // Total number of different products
+        const totalProductos = this.productos.length;
+        
+        // Total units in stock (sum of all quantities)
+        const unidadesTotales = this.productos.reduce((sum, p) => sum + p.cantidad, 0);
+        
+        // Total inventory value (sum of price * quantity for each product)
+        const valorTotal = this.productos.reduce((sum, p) => {
+            return sum + (p.precio * p.cantidad);
+        }, 0);
+        
+        // Update DOM elements
+        const totalProductosEl = document.getElementById('totalProductos');
+        const unidadesTotalesEl = document.getElementById('unidadesTotales');
+        const valorTotalEl = document.getElementById('valorTotal');
+        
+        if (totalProductosEl) {
+            totalProductosEl.textContent = totalProductos;
+            this.animarCambio(totalProductosEl);
+        }
+        
+        if (unidadesTotalesEl) {
+            unidadesTotalesEl.textContent = unidadesTotales.toLocaleString('es-ES');
+            this.animarCambio(unidadesTotalesEl);
+        }
+        
+        if (valorTotalEl) {
+            valorTotalEl.textContent = this.formatearPrecio(valorTotal);
+            this.animarCambio(valorTotalEl);
+        }
     }
 
     /**
@@ -625,6 +756,137 @@ class FormularioProducto {
 }
 
 /**
+ * Menu handler for import/export/clear operations
+ */
+class MenuHandler {
+    constructor(almacen) {
+        this.almacen = almacen;
+        this.menuToggle = document.getElementById('menuToggle');
+        this.menuDropdown = document.getElementById('menuDropdown');
+        this.fileInput = document.getElementById('fileInput');
+        
+        this.inicializarEventos();
+    }
+
+    inicializarEventos() {
+        // Toggle menu
+        this.menuToggle?.addEventListener('click', () => this.toggleMenu());
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('header')) {
+                this.closeMenu();
+            }
+        });
+        
+        // Import JSON
+        document.getElementById('importarJson')?.addEventListener('click', () => {
+            this.closeMenu();
+            this.importarJSON();
+        });
+        
+        // Export JSON
+        document.getElementById('exportarJson')?.addEventListener('click', () => {
+            this.closeMenu();
+            this.exportarJSON();
+        });
+        
+        // Clear inventory
+        document.getElementById('limpiarInventario')?.addEventListener('click', () => {
+            this.closeMenu();
+            this.limpiarInventario();
+        });
+        
+        // File input change
+        this.fileInput?.addEventListener('change', (e) => {
+            this.procesarArchivoImportado(e);
+        });
+    }
+
+    toggleMenu() {
+        const isActive = this.menuDropdown.classList.toggle('active');
+        this.menuToggle.classList.toggle('active');
+        this.menuToggle.setAttribute('aria-expanded', isActive);
+    }
+
+    closeMenu() {
+        this.menuDropdown.classList.remove('active');
+        this.menuToggle.classList.remove('active');
+        this.menuToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    importarJSON() {
+        this.fileInput.click();
+    }
+
+    async procesarArchivoImportado(e) {
+        const file = e.target.files[0];
+        
+        if (!file) return;
+        
+        if (!file.name.endsWith('.json')) {
+            alert('Por favor, seleccione un archivo JSON válido.');
+            return;
+        }
+        
+        try {
+            const count = await this.almacen.importarJSON(file);
+            alert(`✓ Importación exitosa!\n\n${count} productos importados correctamente.`);
+        } catch (error) {
+            console.error('Import error:', error);
+            alert(`✗ Error al importar:\n\n${error.message}`);
+        } finally {
+            // Reset file input
+            this.fileInput.value = '';
+        }
+    }
+
+    exportarJSON() {
+        if (this.almacen.productos.length === 0) {
+            alert('No hay productos para exportar.');
+            return;
+        }
+        
+        try {
+            this.almacen.exportarJSON();
+            alert(`✓ Exportación exitosa!\n\n${this.almacen.productos.length} productos exportados.`);
+        } catch (error) {
+            console.error('Export error:', error);
+            alert(`✗ Error al exportar:\n\n${error.message}`);
+        }
+    }
+
+    limpiarInventario() {
+        if (this.almacen.productos.length === 0) {
+            alert('El inventario ya está vacío.');
+            return;
+        }
+        
+        const count = this.almacen.productos.length;
+        const confirmacion = confirm(
+            `⚠️ ADVERTENCIA\n\n` +
+            `Está a punto de eliminar TODOS los productos del inventario.\n\n` +
+            `Total de productos: ${count}\n\n` +
+            `Esta acción NO se puede deshacer.\n\n` +
+            `¿Desea continuar?`
+        );
+        
+        if (confirmacion) {
+            // Double confirmation for safety
+            const doubleCheck = confirm(
+                `¿Está COMPLETAMENTE seguro?\n\n` +
+                `Se eliminarán ${count} productos permanentemente.`
+            );
+            
+            if (doubleCheck) {
+                this.almacen.limpiarInventario();
+                alert(`✓ Inventario limpiado correctamente.\n\n${count} productos eliminados.`);
+            }
+        }
+    }
+}
+
+/**
  * Initialize application when DOM is ready
  */
 document.addEventListener('DOMContentLoaded', async () => {
@@ -640,6 +902,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Initialize form
         const formulario = new FormularioProducto(almacen);
+        
+        // Initialize menu
+        const menu = new MenuHandler(almacen);
         
         console.log('Warehouse application initialized successfully');
     } catch (error) {

@@ -11,7 +11,35 @@
 <body>
     <header>
         <h1>Almacén Online</h1>
+        <h3>Gestionamos su inventario de forma eficiente</h3>
+        <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú" aria-expanded="false">
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+        </button>
+        <nav class="menu-dropdown" id="menuDropdown">
+            <ul>
+                <li>
+                    <button class="menu-item" id="importarJson">
+                        📥 Importar JSON
+                    </button>
+                </li>
+                <li>
+                    <button class="menu-item" id="exportarJson">
+                        📤 Exportar JSON
+                    </button>
+                </li>
+                <li>
+                    <button class="menu-item danger" id="limpiarInventario">
+                        🗑️ Limpiar Inventario
+                    </button>
+                </li>
+            </ul>
+        </nav>
     </header>
+    
+    <!-- Hidden file input for JSON import -->
+    <input type="file" id="fileInput" accept="application/json,.json" style="display: none;">
     
     <main>
         <section class="form-section">
@@ -95,11 +123,36 @@
                     </tr>
                 </template>
             </div>
+            
+            <!-- Summary section -->
+            <div class="inventory-summary">
+                <div class="summary-card">
+                    <div class="summary-icon">📦</div>
+                    <div class="summary-content">
+                        <div class="summary-label">Total Productos</div>
+                        <div class="summary-value" id="totalProductos">0</div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon">💰</div>
+                    <div class="summary-content">
+                        <div class="summary-label">Valor Total Inventario</div>
+                        <div class="summary-value" id="valorTotal">€0.00</div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon">📊</div>
+                    <div class="summary-content">
+                        <div class="summary-label">Unidades Totales</div>
+                        <div class="summary-value" id="unidadesTotales">0</div>
+                    </div>
+                </div>
+            </div>
         </section>
     </main>
     
     <footer>
-        <p>&copy; 2024 Almacén Online - Sistema de Gestión</p>
+        <p>&copy; 2026 Almacén Online - Sistema de Gestión</p>
     </footer>
 </body>
 </html>

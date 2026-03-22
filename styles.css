@@ -40,11 +40,142 @@ header {
     padding: var(--spacing-lg);
     text-align: center;
     box-shadow: var(--shadow);
+    position: relative;
 }
 
 header h1 {
     font-size: clamp(1.5rem, 5vw, 2.5rem);
     font-weight: 600;
+    margin: 0;
+}
+
+/* Hamburger Menu Button */
+.menu-toggle {
+    position: absolute;
+    right: var(--spacing-lg);
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 1001;
+    transition: all 0.3s ease;
+}
+
+.menu-toggle:hover {
+    transform: translateY(-50%) scale(1.1);
+}
+
+.hamburger-line {
+    width: 28px;
+    height: 3px;
+    background-color: var(--white);
+    border-radius: 3px;
+    transition: all 0.3s ease;
+    display: block;
+}
+
+/* Hamburger animation when menu is open */
+.menu-toggle.active .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(7px, 7px);
+}
+
+.menu-toggle.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.menu-toggle.active .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -7px);
+}
+
+/* Dropdown Menu */
+.menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: var(--white);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    min-width: 250px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.menu-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.menu-dropdown ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menu-dropdown li {
+    border-bottom: 1px solid var(--light-bg);
+}
+
+.menu-dropdown li:last-child {
+    border-bottom: none;
+}
+
+.menu-item {
+    width: 100%;
+    padding: 1rem 1.5rem;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--primary-color);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-family: inherit;
+}
+
+.menu-item:hover {
+    background-color: var(--light-bg);
+    padding-left: 2rem;
+}
+
+.menu-item:active {
+    background-color: #d5dbdb;
+}
+
+.menu-item.danger {
+    color: var(--danger-color);
+}
+
+.menu-item.danger:hover {
+    background-color: #fadbd8;
+}
+
+/* Responsive header adjustments */
+@media (max-width: 480px) {
+    .menu-toggle {
+        right: var(--spacing-md);
+    }
+    
+    .menu-dropdown {
+        min-width: 200px;
+        right: var(--spacing-sm);
+    }
+    
+    header h1 {
+        padding-right: 3rem;
+    }
 }
 
 /* Main content */
@@ -265,6 +396,87 @@ button:disabled {
     padding: 2rem;
     color: #7f8c8d;
     font-style: italic;
+}
+
+/* Inventory Summary Section */
+.inventory-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+    border-top: 2px solid var(--light-bg);
+}
+
+.summary-card {
+    background: linear-gradient(135deg, var(--light-bg) 0%, var(--white) 100%);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.summary-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow);
+    border-color: var(--secondary-color);
+}
+
+.summary-icon {
+    font-size: 2.5rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--white);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.summary-content {
+    flex: 1;
+}
+
+.summary-label {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.summary-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+}
+
+/* Responsive summary */
+@media (max-width: 767px) {
+    .inventory-summary {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-card {
+        padding: var(--spacing-md);
+    }
+    
+    .summary-icon {
+        font-size: 2rem;
+        width: 50px;
+        height: 50px;
+    }
+    
+    .summary-value {
+        font-size: 1.5rem;
+    }
 }
 
 /* Footer */
