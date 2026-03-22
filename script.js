@@ -3,7 +3,19 @@
 class Almacen {
     constructor() {
         this.productos = [];
+        this.productosFiltrados = [];
         this.storageKey = 'almacen';
+        this.filtrosActivos = {
+            busqueda: '',
+            ordenar: 'nombre-asc',
+            precioMin: 0,
+            precioMax: 1000,
+            cantidadMin: 0,
+            cantidadMax: 500,
+            enStock: true,
+            sinStock: true,
+            stockCritico: true
+        };
     }
 
     /**
@@ -283,17 +295,125 @@ class Almacen {
             return;
         }
 
+        // Apply filters and search
+        this.aplicarFiltros();
+
         // Clear existing rows
         tbody.innerHTML = '';
 
-        // Add each product as a row
-        this.productos.forEach(producto => {
+        // Add each filtered product as a row
+        this.productosFiltrados.forEach(producto => {
             const row = this.crearFilaProducto(producto);
             tbody.appendChild(row);
         });
         
         // Update summary statistics
         this.actualizarResumen();
+        
+        // Update search results counter
+        this.actualizarContador();
+    }
+
+    /**
+     * Apply search and filters to products
+     */
+    aplicarFiltros() {
+        let resultados = [...this.productos];
+        
+        // Apply search filter
+        if (this.filtrosActivos.busqueda) {
+            const busqueda = this.filtrosActivos.busqueda.toLowerCase();
+            resultados = resultados.filter(p => 
+                p.nombre.toLowerCase().includes(busqueda)
+            );
+        }
+        
+        // Apply price range filter
+        resultados = resultados.filter(p => 
+            p.precio >= this.filtrosActivos.precioMin && 
+            p.precio <= this.filtrosActivos.precioMax
+        );
+        
+        // Apply quantity range filter
+        resultados = resultados.filter(p => 
+            p.cantidad >= this.filtrosActivos.cantidadMin && 
+            p.cantidad <= this.filtrosActivos.cantidadMax
+        );
+        
+        // Apply stock status filters
+        resultados = resultados.filter(p => {
+            if (p.cantidad > 0 && !this.filtrosActivos.enStock) return false;
+            if (p.cantidad === 0 && !this.filtrosActivos.sinStock) return false;
+            if (p.cantidad > 0 && p.cantidad < 10 && !this.filtrosActivos.stockCritico) return false;
+            return true;
+        });
+        
+        // Apply sorting
+        this.ordenarProductos(resultados);
+        
+        this.productosFiltrados = resultados;
+    }
+
+    /**
+     * Sort products based on selected criteria
+     */
+    ordenarProductos(productos) {
+        const [campo, direccion] = this.filtrosActivos.ordenar.split('-');
+        
+        productos.sort((a, b) => {
+            let valorA, valorB;
+            
+            if (campo === 'nombre') {
+                valorA = a.nombre.toLowerCase();
+                valorB = b.nombre.toLowerCase();
+                return direccion === 'asc' 
+                    ? valorA.localeCompare(valorB)
+                    : valorB.localeCompare(valorA);
+            } else {
+                valorA = a[campo];
+                valorB = b[campo];
+                return direccion === 'asc'
+                    ? valorA - valorB
+                    : valorB - valorA;
+            }
+        });
+    }
+
+    /**
+     * Update search results counter
+     */
+    actualizarContador() {
+        const shownCount = document.getElementById('shownCount');
+        const totalCount = document.getElementById('totalCount');
+        
+        if (shownCount) shownCount.textContent = this.productosFiltrados.length;
+        if (totalCount) totalCount.textContent = this.productos.length;
+    }
+
+    /**
+     * Update filter values
+     */
+    actualizarFiltro(filtro, valor) {
+        this.filtrosActivos[filtro] = valor;
+        this.mostrarProductos();
+    }
+
+    /**
+     * Reset all filters to default
+     */
+    resetearFiltros() {
+        this.filtrosActivos = {
+            busqueda: '',
+            ordenar: 'nombre-asc',
+            precioMin: 0,
+            precioMax: 1000,
+            cantidadMin: 0,
+            cantidadMax: 500,
+            enStock: true,
+            sinStock: true,
+            stockCritico: true
+        };
+        this.mostrarProductos();
     }
 
     /**
@@ -318,17 +438,14 @@ class Almacen {
         
         if (totalProductosEl) {
             totalProductosEl.textContent = totalProductos;
-            this.animarCambio(totalProductosEl);
         }
         
         if (unidadesTotalesEl) {
             unidadesTotalesEl.textContent = unidadesTotales.toLocaleString('es-ES');
-            this.animarCambio(unidadesTotalesEl);
         }
         
         if (valorTotalEl) {
             valorTotalEl.textContent = this.formatearPrecio(valorTotal);
-            this.animarCambio(valorTotalEl);
         }
     }
 
@@ -756,6 +873,210 @@ class FormularioProducto {
 }
 
 /**
+ * Search and Filter handler
+ */
+class SearchAndFilterHandler {
+    constructor(almacen) {
+        this.almacen = almacen;
+        this.searchInput = document.getElementById('searchInput');
+        this.clearSearchBtn = document.getElementById('clearSearch');
+        this.toggleFiltersBtn = document.getElementById('toggleFilters');
+        this.filterSidebar = document.getElementById('filterSidebar');
+        this.resetFiltersBtn = document.getElementById('resetFilters');
+        
+        this.inicializarEventos();
+    }
+
+    inicializarEventos() {
+        // Search input - real-time search
+        this.searchInput?.addEventListener('input', (e) => {
+            const value = e.target.value.trim();
+            this.almacen.actualizarFiltro('busqueda', value);
+            
+            // Show/hide clear button
+            if (value) {
+                this.clearSearchBtn?.classList.add('visible');
+            } else {
+                this.clearSearchBtn?.classList.remove('visible');
+            }
+        });
+        
+        // Clear search button
+        this.clearSearchBtn?.addEventListener('click', () => {
+            this.searchInput.value = '';
+            this.almacen.actualizarFiltro('busqueda', '');
+            this.clearSearchBtn.classList.remove('visible');
+            this.searchInput.focus();
+        });
+        
+        // Toggle filters sidebar
+        this.toggleFiltersBtn?.addEventListener('click', () => {
+            this.filterSidebar?.classList.toggle('active');
+            this.toggleFiltersBtn?.classList.toggle('active');
+        });
+        
+        // Sort select
+        document.getElementById('sortSelect')?.addEventListener('change', (e) => {
+            this.almacen.actualizarFiltro('ordenar', e.target.value);
+        });
+        
+        // Price range inputs
+        this.inicializarRangoPrecio();
+        
+        // Quantity range inputs
+        this.inicializarRangoCantidad();
+        
+        // Stock status checkboxes
+        document.getElementById('filterEnStock')?.addEventListener('change', (e) => {
+            this.almacen.actualizarFiltro('enStock', e.target.checked);
+        });
+        
+        document.getElementById('filterSinStock')?.addEventListener('change', (e) => {
+            this.almacen.actualizarFiltro('sinStock', e.target.checked);
+        });
+        
+        document.getElementById('filterStockCritico')?.addEventListener('change', (e) => {
+            this.almacen.actualizarFiltro('stockCritico', e.target.checked);
+        });
+        
+        // Reset filters button
+        this.resetFiltersBtn?.addEventListener('click', () => {
+            this.resetearTodosFiltros();
+        });
+    }
+
+    inicializarRangoPrecio() {
+        const precioMin = document.getElementById('precioMin');
+        const precioMax = document.getElementById('precioMax');
+        const precioRangeMin = document.getElementById('precioRangeMin');
+        const precioRangeMax = document.getElementById('precioRangeMax');
+        const precioMinValue = document.getElementById('precioMinValue');
+        const precioMaxValue = document.getElementById('precioMaxValue');
+        
+        // Text inputs
+        precioMin?.addEventListener('change', (e) => {
+            const value = parseFloat(e.target.value) || 0;
+            this.almacen.actualizarFiltro('precioMin', value);
+            if (precioRangeMin) precioRangeMin.value = value;
+            if (precioMinValue) precioMinValue.textContent = `€${value}`;
+        });
+        
+        precioMax?.addEventListener('change', (e) => {
+            const value = parseFloat(e.target.value) || 1000;
+            this.almacen.actualizarFiltro('precioMax', value);
+            if (precioRangeMax) precioRangeMax.value = value;
+            if (precioMaxValue) precioMaxValue.textContent = `€${value}`;
+        });
+        
+        // Range sliders
+        precioRangeMin?.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            if (precioMin) precioMin.value = value;
+            if (precioMinValue) precioMinValue.textContent = `€${value}`;
+            this.almacen.actualizarFiltro('precioMin', value);
+        });
+        
+        precioRangeMax?.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            if (precioMax) precioMax.value = value;
+            if (precioMaxValue) precioMaxValue.textContent = `€${value}`;
+            this.almacen.actualizarFiltro('precioMax', value);
+        });
+    }
+
+    inicializarRangoCantidad() {
+        const cantidadMin = document.getElementById('cantidadMin');
+        const cantidadMax = document.getElementById('cantidadMax');
+        const cantidadRangeMin = document.getElementById('cantidadRangeMin');
+        const cantidadRangeMax = document.getElementById('cantidadRangeMax');
+        const cantidadMinValue = document.getElementById('cantidadMinValue');
+        const cantidadMaxValue = document.getElementById('cantidadMaxValue');
+        
+        // Text inputs
+        cantidadMin?.addEventListener('change', (e) => {
+            const value = parseInt(e.target.value, 10) || 0;
+            this.almacen.actualizarFiltro('cantidadMin', value);
+            if (cantidadRangeMin) cantidadRangeMin.value = value;
+            if (cantidadMinValue) cantidadMinValue.textContent = value;
+        });
+        
+        cantidadMax?.addEventListener('change', (e) => {
+            const value = parseInt(e.target.value, 10) || 500;
+            this.almacen.actualizarFiltro('cantidadMax', value);
+            if (cantidadRangeMax) cantidadRangeMax.value = value;
+            if (cantidadMaxValue) cantidadMaxValue.textContent = value;
+        });
+        
+        // Range sliders
+        cantidadRangeMin?.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value, 10);
+            if (cantidadMin) cantidadMin.value = value;
+            if (cantidadMinValue) cantidadMinValue.textContent = value;
+            this.almacen.actualizarFiltro('cantidadMin', value);
+        });
+        
+        cantidadRangeMax?.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value, 10);
+            if (cantidadMax) cantidadMax.value = value;
+            if (cantidadMaxValue) cantidadMaxValue.textContent = value;
+            this.almacen.actualizarFiltro('cantidadMax', value);
+        });
+    }
+
+    resetearTodosFiltros() {
+        // Reset search
+        if (this.searchInput) this.searchInput.value = '';
+        this.clearSearchBtn?.classList.remove('visible');
+        
+        // Reset sort
+        const sortSelect = document.getElementById('sortSelect');
+        if (sortSelect) sortSelect.value = 'nombre-asc';
+        
+        // Reset price range
+        const precioMin = document.getElementById('precioMin');
+        const precioMax = document.getElementById('precioMax');
+        const precioRangeMin = document.getElementById('precioRangeMin');
+        const precioRangeMax = document.getElementById('precioRangeMax');
+        const precioMinValue = document.getElementById('precioMinValue');
+        const precioMaxValue = document.getElementById('precioMaxValue');
+        
+        if (precioMin) precioMin.value = '';
+        if (precioMax) precioMax.value = '';
+        if (precioRangeMin) precioRangeMin.value = 0;
+        if (precioRangeMax) precioRangeMax.value = 1000;
+        if (precioMinValue) precioMinValue.textContent = '€0';
+        if (precioMaxValue) precioMaxValue.textContent = '€1000';
+        
+        // Reset quantity range
+        const cantidadMin = document.getElementById('cantidadMin');
+        const cantidadMax = document.getElementById('cantidadMax');
+        const cantidadRangeMin = document.getElementById('cantidadRangeMin');
+        const cantidadRangeMax = document.getElementById('cantidadRangeMax');
+        const cantidadMinValue = document.getElementById('cantidadMinValue');
+        const cantidadMaxValue = document.getElementById('cantidadMaxValue');
+        
+        if (cantidadMin) cantidadMin.value = '';
+        if (cantidadMax) cantidadMax.value = '';
+        if (cantidadRangeMin) cantidadRangeMin.value = 0;
+        if (cantidadRangeMax) cantidadRangeMax.value = 500;
+        if (cantidadMinValue) cantidadMinValue.textContent = '0';
+        if (cantidadMaxValue) cantidadMaxValue.textContent = '500';
+        
+        // Reset checkboxes
+        const filterEnStock = document.getElementById('filterEnStock');
+        const filterSinStock = document.getElementById('filterSinStock');
+        const filterStockCritico = document.getElementById('filterStockCritico');
+        
+        if (filterEnStock) filterEnStock.checked = true;
+        if (filterSinStock) filterSinStock.checked = true;
+        if (filterStockCritico) filterStockCritico.checked = true;
+        
+        // Reset almacen filters
+        this.almacen.resetearFiltros();
+    }
+}
+
+/**
  * Menu handler for import/export/clear operations
  */
 class MenuHandler {
@@ -902,6 +1223,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Initialize form
         const formulario = new FormularioProducto(almacen);
+        
+        // Initialize search and filters
+        const searchFilter = new SearchAndFilterHandler(almacen);
         
         // Initialize menu
         const menu = new MenuHandler(almacen);

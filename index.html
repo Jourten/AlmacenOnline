@@ -11,7 +11,6 @@
 <body>
     <header>
         <h1>Almacén Online</h1>
-        <h3>Gestionamos su inventario de forma eficiente</h3>
         <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú" aria-expanded="false">
             <span class="hamburger-line"></span>
             <span class="hamburger-line"></span>
@@ -90,7 +89,102 @@
         </section>
 
         <section class="table-section">
-            <h2>Productos en el Almacén</h2>
+            <div class="section-header">
+                <h2>Productos en el Almacén</h2>
+                <button class="btn-toggle-filters" id="toggleFilters" aria-label="Mostrar/Ocultar filtros">
+                    🎯 Filtros
+                </button>
+            </div>
+            
+            <!-- Search bar -->
+            <div class="search-container">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input 
+                        type="search" 
+                        id="searchInput" 
+                        placeholder="Buscar productos por nombre..."
+                        autocomplete="off"
+                        aria-label="Buscar productos">
+                    <button class="clear-search" id="clearSearch" aria-label="Limpiar búsqueda">✕</button>
+                </div>
+                <div class="search-results-info" id="searchResultsInfo">
+                    Mostrando <strong id="shownCount">0</strong> de <strong id="totalCount">0</strong> productos
+                </div>
+            </div>
+            
+            <!-- Filter Sidebar -->
+            <aside class="filter-sidebar" id="filterSidebar">
+                <div class="filter-header">
+                    <h3>Filtros</h3>
+                    <button class="btn-reset-filters" id="resetFilters">Limpiar filtros</button>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Ordenar por:</label>
+                    <select id="sortSelect" class="filter-select">
+                        <option value="nombre-asc">Nombre (A-Z)</option>
+                        <option value="nombre-desc">Nombre (Z-A)</option>
+                        <option value="precio-asc">Precio (menor a mayor)</option>
+                        <option value="precio-desc">Precio (mayor a menor)</option>
+                        <option value="cantidad-asc">Stock (menor a mayor)</option>
+                        <option value="cantidad-desc">Stock (mayor a menor)</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Rango de Precio:</label>
+                    <div class="range-inputs">
+                        <input type="number" id="precioMin" placeholder="Mín" min="0" step="0.01">
+                        <span>—</span>
+                        <input type="number" id="precioMax" placeholder="Máx" min="0" step="0.01">
+                    </div>
+                    <div class="range-slider-container">
+                        <input type="range" id="precioRangeMin" min="0" max="1000" value="0" step="1">
+                        <input type="range" id="precioRangeMax" min="0" max="1000" value="1000" step="1">
+                    </div>
+                    <div class="range-values">
+                        <span id="precioMinValue">€0</span>
+                        <span id="precioMaxValue">€1000</span>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Rango de Cantidad:</label>
+                    <div class="range-inputs">
+                        <input type="number" id="cantidadMin" placeholder="Mín" step="1">
+                        <span>—</span>
+                        <input type="number" id="cantidadMax" placeholder="Máx" step="1">
+                    </div>
+                    <div class="range-slider-container">
+                        <input type="range" id="cantidadRangeMin" min="0" max="500" value="0" step="1">
+                        <input type="range" id="cantidadRangeMax" min="0" max="500" value="500" step="1">
+                    </div>
+                    <div class="range-values">
+                        <span id="cantidadMinValue">0</span>
+                        <span id="cantidadMaxValue">500</span>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">Estado del Stock:</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="filterEnStock" checked>
+                            <span>En stock (> 0)</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="filterSinStock" checked>
+                            <span>Sin stock (= 0)</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="filterStockCritico" checked>
+                            <span>Stock crítico (< 10)</span>
+                        </label>
+                    </div>
+                </div>
+            </aside>
+            
             <div class="table-container">
                 <table id="productosTable">
                     <thead>
@@ -152,7 +246,7 @@
     </main>
     
     <footer>
-        <p>&copy; 2026 Almacén Online - Sistema de Gestión</p>
+        <p>&copy; 2024 Almacén Online - Sistema de Gestión</p>
     </footer>
 </body>
 </html>
