@@ -1,10 +1,18 @@
-// script.js — Modern warehouse management system
+// ============================================================================
+// SISTEMA DE GESTIÓN DE ALMACÉN - WAREHOUSE MANAGEMENT SYSTEM
+// ============================================================================
 
+/**
+ * Clase principal que maneja toda la lógica del almacén
+ * Gestiona productos, filtros, búsqueda y persistencia de datos
+ */
 class Almacen {
     constructor() {
-        this.productos = [];
-        this.productosFiltrados = [];
-        this.storageKey = 'almacen';
+        this.productos = [];              // Array principal con todos los productos
+        this.productosFiltrados = [];     // Array con productos después de aplicar filtros
+        this.storageKey = 'almacen';      // Clave para localStorage
+        
+        // Configuración inicial de filtros
         this.filtrosActivos = {
             busqueda: '',
             ordenar: 'nombre-asc',
@@ -18,12 +26,20 @@ class Almacen {
         };
     }
 
+    // ========================================================================
+    // MÉTODOS DE GESTIÓN DE PRODUCTOS (CRUD)
+    // ========================================================================
+
     /**
-     * Add a new product to the warehouse
+     * Agrega un nuevo producto al almacén
+     * @param {string} nombre - Nombre del producto
+     * @param {number} precio - Precio unitario
+     * @param {number} cantidad - Cantidad en stock
+     * @returns {Object} El producto creado
      */
     agregarProducto(nombre, precio, cantidad) {
         const nuevoProducto = {
-            id: Date.now(), // Unique ID
+            id: Date.now(),                       // ID único basado en timestamp
             nombre,
             precio: parseFloat(precio),
             cantidad: parseInt(cantidad, 10),
@@ -37,7 +53,38 @@ class Almacen {
     }
 
     /**
-     * Delete a product by ID
+     * Actualiza todos los campos de un producto existente
+     * @param {number} id - ID del producto a actualizar
+     * @param {Object} nuevosDatos - Objeto con nombre, cantidad y precio
+     * @returns {Object|boolean} El producto actualizado o false si no existe
+     */
+    actualizarProducto(id, nuevosDatos) {
+        const index = this.productos.findIndex(p => p.id === id);
+        
+        if (index === -1) {
+            console.error('Product not found');
+            return false;
+        }
+        
+        // Mantiene el ID y fechaCreacion originales, actualiza el resto
+        this.productos[index] = {
+            ...this.productos[index],
+            nombre: nuevosDatos.nombre,
+            cantidad: parseInt(nuevosDatos.cantidad, 10),
+            precio: parseFloat(nuevosDatos.precio),
+            fechaModificacion: new Date().toISOString()
+        };
+        
+        this.guardarEnLocalStorage();
+        this.mostrarProductos();
+        
+        return this.productos[index];
+    }
+
+    /**
+     * Elimina un producto del almacén
+     * @param {number} id - ID del producto a eliminar
+     * @returns {Object|boolean} El producto eliminado o false si no existe
      */
     eliminarProducto(id) {
         const index = this.productos.findIndex(p => p.id === id);
@@ -55,34 +102,15 @@ class Almacen {
         return productoEliminado;
     }
 
-    /**
-     * Update a product by ID
-     */
-    actualizarProducto(id, nuevosDatos) {
-        const index = this.productos.findIndex(p => p.id === id);
-        
-        if (index === -1) {
-            console.error('Product not found');
-            return false;
-        }
-        
-        // Update product data
-        this.productos[index] = {
-            ...this.productos[index],
-            nombre: nuevosDatos.nombre,
-            cantidad: parseInt(nuevosDatos.cantidad, 10),
-            precio: parseFloat(nuevosDatos.precio),
-            fechaModificacion: new Date().toISOString()
-        };
-        
-        this.guardarEnLocalStorage();
-        this.mostrarProductos();
-        
-        return this.productos[index];
-    }
+    // ========================================================================
+    // MÉTODOS DE AJUSTE RÁPIDO (BOTONES +/-)
+    // ========================================================================
 
     /**
-     * Adjust product quantity (increase or decrease)
+     * Incrementa o decrementa la cantidad de un producto
+     * @param {number} id - ID del producto
+     * @param {number} ajuste - Cantidad a sumar (positivo) o restar (negativo)
+     * @returns {Object|boolean} El producto actualizado o false si no existe
      */
     ajustarCantidad(id, ajuste) {
         const producto = this.productos.find(p => p.id === id);
@@ -102,7 +130,11 @@ class Almacen {
     }
 
     /**
-     * Adjust product price (increase or decrease)
+     * Incrementa o decrementa el precio de un producto
+     * Nunca permite precios negativos (mínimo 0)
+     * @param {number} id - ID del producto
+     * @param {number} ajuste - Cantidad a sumar o restar al precio
+     * @returns {Object|boolean} El producto actualizado o false si no existe
      */
     ajustarPrecio(id, ajuste) {
         const producto = this.productos.find(p => p.id === id);
@@ -112,6 +144,7 @@ class Almacen {
             return false;
         }
         
+        // Math.max asegura que el precio nunca sea negativo
         producto.precio = Math.max(0, producto.precio + ajuste);
         producto.fechaModificacion = new Date().toISOString();
         
@@ -121,15 +154,72 @@ class Almacen {
         return producto;
     }
 
+    // ========================================================================
+    // MÉTODOS DE PERSISTENCIA (LOCALSTORAGE Y JSON)
+    // ========================================================================
+
     /**
-     * Get product by ID
+     * Guarda el array de productos en localStorage
+     * @returns {boolean} true si se guardó correctamente, false en caso de error
      */
-    obtenerProducto(id) {
-        return this.productos.find(p => p.id === id);
+    guardarEnLocalStorage() {
+        try {
+            localStorage.setItem(this.storageKey, JSON.stringify(this.productos));
+            return true;
+        } catch (error) {
+            console.error('Error saving to localStorage:', error);
+            return false;
+        }
     }
 
     /**
-     * Export inventory to JSON file
+     * Carga productos desde localStorage o desde el archivo JSON inicial
+     * @returns {Promise} Promesa que se resuelve cuando se cargan los datos
+     */
+    async cargarDesdeLocalStorage() {
+        try {
+            const data = localStorage.getItem(this.storageKey);
+            
+            if (data) {
+                this.productos = JSON.parse(data);
+                console.log('Products loaded from localStorage');
+            } else {
+                // Si no hay datos en localStorage, intenta cargar desde JSON
+                await this.cargarDesdeJSON();
+            }
+        } catch (error) {
+            console.error('Error loading from localStorage:', error);
+            await this.cargarDesdeJSON();
+        }
+    }
+
+    /**
+     * Carga productos desde el archivo almacen.json
+     * Se usa como fallback si localStorage está vacío
+     */
+    async cargarDesdeJSON() {
+        try {
+            const response = await fetch('almacen.json');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            this.productos = data.productos || [];
+            this.guardarEnLocalStorage();
+            console.log('Products loaded from almacen.json');
+        } catch (error) {
+            console.error('Error loading almacen.json:', error);
+            // Si falla, inicializa con array vacío
+            this.productos = [];
+        }
+    }
+
+    /**
+     * Exporta el inventario completo a un archivo JSON descargable
+     * El archivo incluye metadatos como fecha de exportación y versión
+     * @returns {boolean} true si la exportación fue exitosa
      */
     exportarJSON() {
         const data = {
@@ -142,20 +232,24 @@ class Almacen {
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         
+        // Crea un link temporal para descargar el archivo
         const link = document.createElement('a');
         link.href = url;
         link.download = `almacen_${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(url); // Libera memoria
         
         console.log('Inventory exported successfully');
         return true;
     }
 
     /**
-     * Import inventory from JSON file
+     * Importa productos desde un archivo JSON
+     * Valida la estructura y los datos antes de importar
+     * @param {File} file - Archivo JSON a importar
+     * @returns {Promise<number>} Número de productos importados
      */
     async importarJSON(file) {
         return new Promise((resolve, reject) => {
@@ -165,12 +259,12 @@ class Almacen {
                 try {
                     const data = JSON.parse(e.target.result);
                     
-                    // Validate JSON structure
+                    // Valida que el JSON tenga la estructura correcta
                     if (!data.productos || !Array.isArray(data.productos)) {
                         throw new Error('Formato JSON inválido. Debe contener un array "productos".');
                     }
                     
-                    // Validate each product
+                    // Filtra solo productos con datos válidos
                     const productosValidos = data.productos.filter(p => {
                         return p.nombre && 
                                typeof p.cantidad === 'number' && 
@@ -181,7 +275,7 @@ class Almacen {
                         throw new Error('No se encontraron productos válidos en el archivo.');
                     }
                     
-                    // Add IDs if missing
+                    // Asigna IDs únicos si no existen
                     this.productos = productosValidos.map((p, index) => ({
                         id: p.id || Date.now() + index,
                         nombre: p.nombre,
@@ -210,7 +304,8 @@ class Almacen {
     }
 
     /**
-     * Clear entire inventory
+     * Elimina todos los productos del inventario
+     * @returns {boolean} true si se limpió correctamente
      */
     limpiarInventario() {
         this.productos = [];
@@ -220,107 +315,18 @@ class Almacen {
         return true;
     }
 
-    /**
-     * Check if product already exists (case-insensitive)
-     */
-    productoExiste(nombre) {
-        return this.productos.some(p => 
-            p.nombre.toLowerCase() === nombre.toLowerCase()
-        );
-    }
+    // ========================================================================
+    // MÉTODOS DE BÚSQUEDA Y FILTRADO
+    // ========================================================================
 
     /**
-     * Save products to localStorage
-     */
-    guardarEnLocalStorage() {
-        try {
-            localStorage.setItem(this.storageKey, JSON.stringify(this.productos));
-            return true;
-        } catch (error) {
-            console.error('Error saving to localStorage:', error);
-            return false;
-        }
-    }
-
-    /**
-     * Load products from localStorage or JSON file
-     */
-    async cargarDesdeLocalStorage() {
-        try {
-            const data = localStorage.getItem(this.storageKey);
-            
-            if (data) {
-                this.productos = JSON.parse(data);
-                console.log('Products loaded from localStorage');
-            } else {
-                // Load from JSON file if localStorage is empty
-                await this.cargarDesdeJSON();
-            }
-        } catch (error) {
-            console.error('Error loading from localStorage:', error);
-            await this.cargarDesdeJSON();
-        }
-    }
-
-    /**
-     * Load products from JSON file
-     */
-    async cargarDesdeJSON() {
-        try {
-            const response = await fetch('almacen.json');
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            this.productos = data.productos || [];
-            this.guardarEnLocalStorage();
-            console.log('Products loaded from almacen.json');
-        } catch (error) {
-            console.error('Error loading almacen.json:', error);
-            // Initialize with empty array if file doesn't exist
-            this.productos = [];
-        }
-    }
-
-    /**
-     * Display products in the table
-     */
-    mostrarProductos() {
-        const tbody = document.querySelector('#productosTable tbody');
-        
-        if (!tbody) {
-            console.error('Table body not found');
-            return;
-        }
-
-        // Apply filters and search
-        this.aplicarFiltros();
-
-        // Clear existing rows
-        tbody.innerHTML = '';
-
-        // Add each filtered product as a row
-        this.productosFiltrados.forEach(producto => {
-            const row = this.crearFilaProducto(producto);
-            tbody.appendChild(row);
-        });
-        
-        // Update summary statistics
-        this.actualizarResumen();
-        
-        // Update search results counter
-        this.actualizarContador();
-    }
-
-    /**
-     * Apply search and filters to products
+     * Aplica todos los filtros activos sobre el array de productos
+     * Actualiza this.productosFiltrados con los resultados
      */
     aplicarFiltros() {
         let resultados = [...this.productos];
         
-        // Apply search filter
+        // FILTRO 1: Búsqueda por nombre (case-insensitive)
         if (this.filtrosActivos.busqueda) {
             const busqueda = this.filtrosActivos.busqueda.toLowerCase();
             resultados = resultados.filter(p => 
@@ -328,34 +334,43 @@ class Almacen {
             );
         }
         
-        // Apply price range filter
+        // FILTRO 2: Rango de precios
         resultados = resultados.filter(p => 
             p.precio >= this.filtrosActivos.precioMin && 
             p.precio <= this.filtrosActivos.precioMax
         );
         
-        // Apply quantity range filter
+        // FILTRO 3: Rango de cantidades
         resultados = resultados.filter(p => 
             p.cantidad >= this.filtrosActivos.cantidadMin && 
             p.cantidad <= this.filtrosActivos.cantidadMax
         );
         
-        // Apply stock status filters
+        // FILTRO 4: Estado del stock (checkboxes)
         resultados = resultados.filter(p => {
-            if (p.cantidad > 0 && !this.filtrosActivos.enStock) return false;
-            if (p.cantidad === 0 && !this.filtrosActivos.sinStock) return false;
-            if (p.cantidad > 0 && p.cantidad < 10 && !this.filtrosActivos.stockCritico) return false;
+            const enStock = p.cantidad > 0;
+            const sinStock = p.cantidad === 0;
+            const stockCritico = p.cantidad > 0 && p.cantidad < 10;
+            
+            // Si el producto está en stock pero el filtro está desactivado
+            if (enStock && !stockCritico && !this.filtrosActivos.enStock) return false;
+            // Si el producto no tiene stock pero el filtro está desactivado
+            if (sinStock && !this.filtrosActivos.sinStock) return false;
+            // Si el producto tiene stock crítico pero el filtro está desactivado
+            if (stockCritico && !this.filtrosActivos.stockCritico) return false;
+            
             return true;
         });
         
-        // Apply sorting
+        // Aplica el ordenamiento seleccionado
         this.ordenarProductos(resultados);
         
         this.productosFiltrados = resultados;
     }
 
     /**
-     * Sort products based on selected criteria
+     * Ordena un array de productos según el criterio seleccionado
+     * @param {Array} productos - Array a ordenar (se modifica in-place)
      */
     ordenarProductos(productos) {
         const [campo, direccion] = this.filtrosActivos.ordenar.split('-');
@@ -364,12 +379,14 @@ class Almacen {
             let valorA, valorB;
             
             if (campo === 'nombre') {
+                // Ordenamiento alfabético (case-insensitive)
                 valorA = a.nombre.toLowerCase();
                 valorB = b.nombre.toLowerCase();
                 return direccion === 'asc' 
                     ? valorA.localeCompare(valorB)
                     : valorB.localeCompare(valorA);
             } else {
+                // Ordenamiento numérico (precio o cantidad)
                 valorA = a[campo];
                 valorB = b[campo];
                 return direccion === 'asc'
@@ -380,18 +397,9 @@ class Almacen {
     }
 
     /**
-     * Update search results counter
-     */
-    actualizarContador() {
-        const shownCount = document.getElementById('shownCount');
-        const totalCount = document.getElementById('totalCount');
-        
-        if (shownCount) shownCount.textContent = this.productosFiltrados.length;
-        if (totalCount) totalCount.textContent = this.productos.length;
-    }
-
-    /**
-     * Update filter values
+     * Actualiza un filtro específico y refresca la vista
+     * @param {string} filtro - Nombre del filtro a actualizar
+     * @param {*} valor - Nuevo valor del filtro
      */
     actualizarFiltro(filtro, valor) {
         this.filtrosActivos[filtro] = valor;
@@ -399,7 +407,7 @@ class Almacen {
     }
 
     /**
-     * Reset all filters to default
+     * Resetea todos los filtros a sus valores por defecto
      */
     resetearFiltros() {
         this.filtrosActivos = {
@@ -416,45 +424,50 @@ class Almacen {
         this.mostrarProductos();
     }
 
+    // ========================================================================
+    // MÉTODOS DE RENDERIZADO DE LA INTERFAZ
+    // ========================================================================
+
     /**
-     * Calculate and update inventory summary
+     * Renderiza la tabla completa de productos
+     * Aplica filtros, limpia la tabla y vuelve a llenarla con los productos filtrados
      */
-    actualizarResumen() {
-        // Total number of different products
-        const totalProductos = this.productos.length;
+    mostrarProductos() {
+        const tbody = document.querySelector('#productosTable tbody');
         
-        // Total units in stock (sum of all quantities)
-        const unidadesTotales = this.productos.reduce((sum, p) => sum + p.cantidad, 0);
-        
-        // Total inventory value (sum of price * quantity for each product)
-        const valorTotal = this.productos.reduce((sum, p) => {
-            return sum + (p.precio * p.cantidad);
-        }, 0);
-        
-        // Update DOM elements
-        const totalProductosEl = document.getElementById('totalProductos');
-        const unidadesTotalesEl = document.getElementById('unidadesTotales');
-        const valorTotalEl = document.getElementById('valorTotal');
-        
-        if (totalProductosEl) {
-            totalProductosEl.textContent = totalProductos;
+        if (!tbody) {
+            console.error('Table body not found');
+            return;
         }
+
+        // Aplica todos los filtros activos
+        this.aplicarFiltros();
+
+        // Limpia todas las filas existentes
+        tbody.innerHTML = '';
+
+        // Crea y agrega una fila por cada producto filtrado
+        this.productosFiltrados.forEach(producto => {
+            const row = this.crearFilaProducto(producto);
+            tbody.appendChild(row);
+        });
         
-        if (unidadesTotalesEl) {
-            unidadesTotalesEl.textContent = unidadesTotales.toLocaleString('es-ES');
-        }
+        // Actualiza las estadísticas del resumen
+        this.actualizarResumen();
         
-        if (valorTotalEl) {
-            valorTotalEl.textContent = this.formatearPrecio(valorTotal);
-        }
+        // Actualiza el contador de resultados de búsqueda
+        this.actualizarContador();
     }
 
     /**
-     * Create a table row for a product
+     * Crea un elemento <tr> con todos los datos y controles de un producto
+     * @param {Object} producto - Objeto producto con sus propiedades
+     * @returns {HTMLElement} Elemento <tr> listo para insertar en la tabla
      */
     crearFilaProducto(producto) {
         const row = document.createElement('tr');
         
+        // Estructura HTML de la fila con controles de cantidad, precio y acciones
         row.innerHTML = `
             <td>${this.escaparHTML(producto.nombre)}</td>
             <td>
@@ -487,28 +500,30 @@ class Almacen {
             </td>
         `;
         
-        // Add data attribute for potential future use
+        // Almacena el ID en un data attribute para acceso rápido
         row.dataset.productId = producto.id;
         
-        // Add event listeners for all buttons
+        // Añade los event listeners a todos los botones de la fila
         this.agregarEventListenersAFila(row, producto);
         
         return row;
     }
 
     /**
-     * Add event listeners to row buttons
+     * Añade event listeners a todos los botones de una fila de producto
+     * @param {HTMLElement} row - Elemento <tr> de la fila
+     * @param {Object} producto - Objeto producto asociado a la fila
      */
     agregarEventListenersAFila(row, producto) {
-        // Edit button
+        // Botón de editar
         const editBtn = row.querySelector('.btn-edit');
         editBtn?.addEventListener('click', () => this.manejarEdicion(producto, row));
         
-        // Delete button
+        // Botón de eliminar
         const deleteBtn = row.querySelector('.btn-delete');
         deleteBtn?.addEventListener('click', () => this.manejarEliminacion(producto));
         
-        // Quick control buttons
+        // Botones de ajuste rápido (+/- en cantidad y precio)
         const quickBtns = row.querySelectorAll('.btn-quick');
         quickBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -521,112 +536,120 @@ class Almacen {
     }
 
     /**
-     * Handle quick adjustments (stock and price)
+     * Maneja los clics en los botones de ajuste rápido (+/-)
+     * @param {number} id - ID del producto a ajustar
+     * @param {string} action - Tipo de acción (cantidad-mas, cantidad-menos, precio-mas, precio-menos)
+     * @param {HTMLElement} row - Fila del producto para animar el cambio
      */
     manejarAjusteRapido(id, action, row) {
         let resultado;
+        let elemento;
         
         switch(action) {
             case 'cantidad-mas':
                 resultado = this.ajustarCantidad(id, 1);
-                this.animarCambio(row.querySelector('.quantity-cell .value-display'));
+                elemento = row.querySelector('.quantity-cell .value-display');
                 break;
             case 'cantidad-menos':
                 resultado = this.ajustarCantidad(id, -1);
-                this.animarCambio(row.querySelector('.quantity-cell .value-display'));
+                elemento = row.querySelector('.quantity-cell .value-display');
                 break;
             case 'precio-mas':
                 resultado = this.ajustarPrecio(id, 1);
-                this.animarCambio(row.querySelector('.price-cell .value-display'));
+                elemento = row.querySelector('.price-cell .value-display');
                 break;
             case 'precio-menos':
                 resultado = this.ajustarPrecio(id, -1);
-                this.animarCambio(row.querySelector('.price-cell .value-display'));
+                elemento = row.querySelector('.price-cell .value-display');
                 break;
         }
         
-        if (resultado) {
+        if (resultado && elemento) {
+            this.animarCambio(elemento);
             console.log(`Quick adjustment applied: ${action}`);
         }
     }
 
     /**
-     * Animate value change
+     * Aplica una animación de resaltado a un elemento
+     * @param {HTMLElement} element - Elemento a animar
      */
     animarCambio(element) {
         if (element) {
             element.classList.remove('value-updated');
-            // Force reflow
-            void element.offsetWidth;
+            void element.offsetWidth; // Fuerza un reflow para reiniciar la animación
             element.classList.add('value-updated');
         }
     }
 
     /**
-     * Handle product editing
+     * Activa el modo de edición para un producto
+     * Reemplaza la fila normal por una fila con inputs editables
+     * @param {Object} producto - Producto a editar
+     * @param {HTMLElement} row - Fila actual que será reemplazada
      */
     manejarEdicion(producto, row) {
-        // Check if already editing
+        // Previene múltiples ediciones simultáneas
         if (document.querySelector('.edit-row')) {
             alert('Ya hay un producto en edición. Guarde o cancele primero.');
             return;
         }
         
-        // Get edit row template
         const template = document.getElementById('editRowTemplate');
         if (!template) {
             console.error('Edit template not found');
             return;
         }
         
-        // Clone template
+        // Clona la plantilla de edición
         const editRow = template.content.cloneNode(true).querySelector('tr');
         
-        // Fill with current values
+        // Rellena los inputs con los valores actuales
         editRow.querySelector('.edit-nombre').value = producto.nombre;
         editRow.querySelector('.edit-cantidad').value = producto.cantidad;
         editRow.querySelector('.edit-precio').value = producto.precio;
         
-        // Store original row and product ID
+        // Guarda información necesaria para cancelar o guardar
         editRow.dataset.productId = producto.id;
-        editRow.dataset.originalRowIndex = Array.from(row.parentNode.children).indexOf(row);
         
-        // Add event listeners
+        // Event listeners para los botones de guardar y cancelar
         const saveBtn = editRow.querySelector('.btn-save');
         const cancelBtn = editRow.querySelector('.btn-cancel');
         
-        saveBtn.addEventListener('click', () => this.guardarEdicion(editRow, row));
-        cancelBtn.addEventListener('click', () => this.cancelarEdicion(editRow, row));
+        saveBtn.addEventListener('click', () => this.guardarEdicion(editRow));
+        cancelBtn.addEventListener('click', () => this.cancelarEdicion());
         
-        // Handle Enter key to save
+        // Permite guardar con Enter y cancelar con Escape
         editRow.querySelectorAll('input').forEach(input => {
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    this.guardarEdicion(editRow, row);
+                    this.guardarEdicion(editRow);
                 } else if (e.key === 'Escape') {
-                    this.cancelarEdicion(editRow, row);
+                    this.cancelarEdicion();
                 }
             });
         });
         
-        // Replace row with edit row
+        // Reemplaza la fila normal por la fila de edición
         row.replaceWith(editRow);
         
-        // Focus first input
+        // Hace foco en el primer input
         editRow.querySelector('.edit-nombre').focus();
     }
 
     /**
-     * Save product edit
+     * Guarda los cambios realizados en modo edición
+     * Valida los datos antes de actualizar el producto
+     * @param {HTMLElement} editRow - Fila en modo edición
      */
-    guardarEdicion(editRow, originalRow) {
+    guardarEdicion(editRow) {
         const id = parseInt(editRow.dataset.productId, 10);
         const nombre = editRow.querySelector('.edit-nombre').value.trim();
         const cantidad = editRow.querySelector('.edit-cantidad').value;
         const precio = editRow.querySelector('.edit-precio').value;
         
-        // Validate
+        // Validaciones
         if (!nombre || nombre.length < 3) {
             alert('El nombre del producto debe tener al menos 3 caracteres.');
             editRow.querySelector('.edit-nombre').focus();
@@ -652,7 +675,7 @@ class Almacen {
             return;
         }
         
-        // Check if name already exists (excluding current product)
+        // Verifica que el nombre no esté duplicado (excepto el producto actual)
         const producto = this.obtenerProducto(id);
         if (nombre.toLowerCase() !== producto.nombre.toLowerCase()) {
             if (this.productoExiste(nombre)) {
@@ -662,7 +685,7 @@ class Almacen {
             }
         }
         
-        // Update product
+        // Actualiza el producto
         const resultado = this.actualizarProducto(id, {
             nombre,
             cantidad: cantidadNum,
@@ -675,15 +698,15 @@ class Almacen {
     }
 
     /**
-     * Cancel product edit
+     * Cancela el modo de edición y vuelve a mostrar la tabla normal
      */
-    cancelarEdicion(editRow, originalRow) {
-        // Simply refresh the table
+    cancelarEdicion() {
         this.mostrarProductos();
     }
 
     /**
-     * Handle product deletion with confirmation
+     * Maneja la eliminación de un producto con confirmación
+     * @param {Object} producto - Producto a eliminar
      */
     manejarEliminacion(producto) {
         const confirmacion = confirm(
@@ -693,29 +716,108 @@ class Almacen {
         );
         
         if (confirmacion) {
-            // Find the row and add animation
+            // Busca la fila en el DOM y le aplica animación de salida
             const row = document.querySelector(`tr[data-product-id="${producto.id}"]`);
             
             if (row) {
                 row.classList.add('deleting');
                 
-                // Wait for animation to complete before removing
+                // Espera a que termine la animación antes de eliminar
                 setTimeout(() => {
                     const productoEliminado = this.eliminarProducto(producto.id);
                     
                     if (productoEliminado) {
                         console.log(`Product "${productoEliminado.nombre}" deleted successfully`);
                     }
-                }, 300); // Match animation duration
+                }, 300);
             } else {
-                // If row not found, delete immediately
+                // Si no se encuentra la fila, elimina inmediatamente
                 this.eliminarProducto(producto.id);
             }
         }
     }
 
+    // ========================================================================
+    // MÉTODOS DE ESTADÍSTICAS Y RESUMEN
+    // ========================================================================
+
     /**
-     * Escape HTML to prevent XSS
+     * Calcula y actualiza las estadísticas del inventario
+     * Muestra: total de productos, unidades totales y valor total
+     */
+    actualizarResumen() {
+        // Total de productos diferentes
+        const totalProductos = this.productos.length;
+        
+        // Suma de todas las cantidades
+        const unidadesTotales = this.productos.reduce((sum, p) => sum + p.cantidad, 0);
+        
+        // Valor total del inventario (precio × cantidad para cada producto)
+        const valorTotal = this.productos.reduce((sum, p) => {
+            return sum + (p.precio * p.cantidad);
+        }, 0);
+        
+        // Actualiza los elementos del DOM
+        const totalProductosEl = document.getElementById('totalProductos');
+        const unidadesTotalesEl = document.getElementById('unidadesTotales');
+        const valorTotalEl = document.getElementById('valorTotal');
+        
+        if (totalProductosEl) {
+            totalProductosEl.textContent = totalProductos;
+            this.animarCambio(totalProductosEl);
+        }
+        
+        if (unidadesTotalesEl) {
+            unidadesTotalesEl.textContent = unidadesTotales.toLocaleString('es-ES');
+            this.animarCambio(unidadesTotalesEl);
+        }
+        
+        if (valorTotalEl) {
+            valorTotalEl.textContent = this.formatearPrecio(valorTotal);
+            this.animarCambio(valorTotalEl);
+        }
+    }
+
+    /**
+     * Actualiza el contador de resultados de búsqueda
+     * Muestra "X de Y productos"
+     */
+    actualizarContador() {
+        const shownCount = document.getElementById('shownCount');
+        const totalCount = document.getElementById('totalCount');
+        
+        if (shownCount) shownCount.textContent = this.productosFiltrados.length;
+        if (totalCount) totalCount.textContent = this.productos.length;
+    }
+
+    // ========================================================================
+    // MÉTODOS AUXILIARES
+    // ========================================================================
+
+    /**
+     * Obtiene un producto por su ID
+     * @param {number} id - ID del producto a buscar
+     * @returns {Object|undefined} El producto encontrado o undefined
+     */
+    obtenerProducto(id) {
+        return this.productos.find(p => p.id === id);
+    }
+
+    /**
+     * Verifica si ya existe un producto con un nombre dado (case-insensitive)
+     * @param {string} nombre - Nombre a buscar
+     * @returns {boolean} true si existe, false si no
+     */
+    productoExiste(nombre) {
+        return this.productos.some(p => 
+            p.nombre.toLowerCase() === nombre.toLowerCase()
+        );
+    }
+
+    /**
+     * Escapa caracteres HTML para prevenir inyección XSS
+     * @param {string} texto - Texto a escapar
+     * @returns {string} Texto seguro para insertar en HTML
      */
     escaparHTML(texto) {
         const div = document.createElement('div');
@@ -724,7 +826,9 @@ class Almacen {
     }
 
     /**
-     * Format price with currency symbol
+     * Formatea un número como precio en euros
+     * @param {number} precio - Precio a formatear
+     * @returns {string} Precio formateado (ej: "12,50 €")
      */
     formatearPrecio(precio) {
         return new Intl.NumberFormat('es-ES', {
@@ -734,8 +838,12 @@ class Almacen {
     }
 }
 
+// ============================================================================
+// CLASE DE MANEJO DEL FORMULARIO
+// ============================================================================
+
 /**
- * Form validation and submission handler
+ * Maneja la validación y envío del formulario de agregar productos
  */
 class FormularioProducto {
     constructor(almacen) {
@@ -748,28 +856,36 @@ class FormularioProducto {
         this.inicializarEventos();
     }
 
+    /**
+     * Configura todos los event listeners del formulario
+     */
     inicializarEventos() {
         if (!this.form) {
             console.error('Form not found');
             return;
         }
 
-        // Handle form submission
+        // Maneja el envío del formulario
         this.form.addEventListener('submit', (e) => {
             e.preventDefault();
             this.validarYEnviar();
         });
 
-        // Real-time validation
+        // Validación en tiempo real del nombre del producto
         this.productInput?.addEventListener('input', () => {
             this.validarProducto();
         });
 
+        // Validación en tiempo real del precio
         this.priceInput?.addEventListener('input', () => {
             this.validarPrecio();
         });
     }
 
+    /**
+     * Valida el campo de nombre del producto
+     * @returns {boolean} true si es válido, false si no
+     */
     validarProducto() {
         const value = this.productInput.value.trim();
         
@@ -782,6 +898,10 @@ class FormularioProducto {
         return true;
     }
 
+    /**
+     * Valida el campo de precio
+     * @returns {boolean} true si es válido, false si no
+     */
     validarPrecio() {
         const value = parseFloat(this.priceInput.value);
         
@@ -794,57 +914,60 @@ class FormularioProducto {
         return true;
     }
 
+    /**
+     * Valida todos los campos y agrega el producto si todo es correcto
+     * @returns {boolean} true si se agregó correctamente, false si hubo errores
+     */
     validarYEnviar() {
-        // Get values
         const product = this.productInput.value.trim();
         const quantity = this.quantityInput.value;
         const price = this.priceInput.value;
 
-        // Validate all fields are filled
+        // Valida que todos los campos estén completos
         if (!product || !quantity || !price) {
             this.mostrarAlerta('Por favor, complete todos los campos.', 'error');
             return false;
         }
 
-        // Validate product name length
+        // Valida longitud mínima del nombre
         if (product.length < 3) {
             this.mostrarAlerta('El nombre del producto debe tener al menos 3 caracteres.', 'error');
             this.productInput.focus();
             return false;
         }
 
-        // Parse numeric values
+        // Convierte a números
         const cantidadNum = parseInt(quantity, 10);
         const precioNum = parseFloat(price);
 
-        // Validate numeric values
+        // Valida que sean números válidos
         if (isNaN(cantidadNum) || isNaN(precioNum)) {
             this.mostrarAlerta('Cantidad y precio deben ser números válidos.', 'error');
             return false;
         }
 
-        // Validate price is not negative
+        // Valida que el precio no sea negativo
         if (precioNum < 0) {
             this.mostrarAlerta('El precio no puede ser negativo.', 'error');
             this.priceInput.focus();
             return false;
         }
 
-        // Check if product already exists
+        // Verifica que el producto no esté duplicado
         if (this.almacen.productoExiste(product)) {
             this.mostrarAlerta(`El producto "${product}" ya existe en el almacén.`, 'warning');
             this.productInput.focus();
             return false;
         }
 
-        // Confirm if quantity is negative
+        // Confirmación si la cantidad es negativa
         if (cantidadNum < 0) {
             if (!confirm('¿Está seguro de que desea agregar una cantidad negativa?')) {
                 return false;
             }
         }
 
-        // Add product
+        // Agrega el producto
         try {
             this.almacen.agregarProducto(product, precioNum, cantidadNum);
             this.mostrarAlerta(`Producto "${product}" agregado exitosamente.`, 'success');
@@ -858,22 +981,30 @@ class FormularioProducto {
         return false;
     }
 
+    /**
+     * Muestra un mensaje de alerta al usuario
+     * @param {string} mensaje - Mensaje a mostrar
+     * @param {string} tipo - Tipo de alerta (success, error, warning, info)
+     */
     mostrarAlerta(mensaje, tipo = 'info') {
-        // You can replace this with a custom alert/toast component
-        const estilos = {
+        const iconos = {
             success: '✓',
             error: '✗',
             warning: '⚠',
             info: 'ℹ'
         };
 
-        const icono = estilos[tipo] || estilos.info;
+        const icono = iconos[tipo] || iconos.info;
         alert(`${icono} ${mensaje}`);
     }
 }
 
+// ============================================================================
+// CLASE DE BÚSQUEDA Y FILTROS
+// ============================================================================
+
 /**
- * Search and Filter handler
+ * Maneja la barra de búsqueda y el panel lateral de filtros
  */
 class SearchAndFilterHandler {
     constructor(almacen) {
@@ -887,13 +1018,16 @@ class SearchAndFilterHandler {
         this.inicializarEventos();
     }
 
+    /**
+     * Configura todos los event listeners de búsqueda y filtros
+     */
     inicializarEventos() {
-        // Search input - real-time search
+        // Búsqueda en tiempo real
         this.searchInput?.addEventListener('input', (e) => {
             const value = e.target.value.trim();
             this.almacen.actualizarFiltro('busqueda', value);
             
-            // Show/hide clear button
+            // Muestra/oculta el botón de limpiar búsqueda
             if (value) {
                 this.clearSearchBtn?.classList.add('visible');
             } else {
@@ -901,7 +1035,7 @@ class SearchAndFilterHandler {
             }
         });
         
-        // Clear search button
+        // Botón de limpiar búsqueda
         this.clearSearchBtn?.addEventListener('click', () => {
             this.searchInput.value = '';
             this.almacen.actualizarFiltro('busqueda', '');
@@ -909,24 +1043,22 @@ class SearchAndFilterHandler {
             this.searchInput.focus();
         });
         
-        // Toggle filters sidebar
+        // Toggle del panel de filtros
         this.toggleFiltersBtn?.addEventListener('click', () => {
             this.filterSidebar?.classList.toggle('active');
             this.toggleFiltersBtn?.classList.toggle('active');
         });
         
-        // Sort select
+        // Selector de ordenamiento
         document.getElementById('sortSelect')?.addEventListener('change', (e) => {
             this.almacen.actualizarFiltro('ordenar', e.target.value);
         });
         
-        // Price range inputs
+        // Inicializa los controles de rango
         this.inicializarRangoPrecio();
-        
-        // Quantity range inputs
         this.inicializarRangoCantidad();
         
-        // Stock status checkboxes
+        // Checkboxes de estado del stock
         document.getElementById('filterEnStock')?.addEventListener('change', (e) => {
             this.almacen.actualizarFiltro('enStock', e.target.checked);
         });
@@ -939,12 +1071,16 @@ class SearchAndFilterHandler {
             this.almacen.actualizarFiltro('stockCritico', e.target.checked);
         });
         
-        // Reset filters button
+        // Botón de resetear filtros
         this.resetFiltersBtn?.addEventListener('click', () => {
             this.resetearTodosFiltros();
         });
     }
 
+    /**
+     * Sincroniza inputs de texto y sliders para el filtro de precio
+     * Permite que cambios en los inputs numéricos muevan los sliders y viceversa
+     */
     inicializarRangoPrecio() {
         const precioMin = document.getElementById('precioMin');
         const precioMax = document.getElementById('precioMax');
@@ -953,7 +1089,7 @@ class SearchAndFilterHandler {
         const precioMinValue = document.getElementById('precioMinValue');
         const precioMaxValue = document.getElementById('precioMaxValue');
         
-        // Text inputs
+        // Cambios en inputs numéricos actualizan sliders y filtros
         precioMin?.addEventListener('change', (e) => {
             const value = parseFloat(e.target.value) || 0;
             this.almacen.actualizarFiltro('precioMin', value);
@@ -968,7 +1104,7 @@ class SearchAndFilterHandler {
             if (precioMaxValue) precioMaxValue.textContent = `€${value}`;
         });
         
-        // Range sliders
+        // Cambios en sliders actualizan inputs y filtros
         precioRangeMin?.addEventListener('input', (e) => {
             const value = parseFloat(e.target.value);
             if (precioMin) precioMin.value = value;
@@ -984,6 +1120,9 @@ class SearchAndFilterHandler {
         });
     }
 
+    /**
+     * Sincroniza inputs de texto y sliders para el filtro de cantidad
+     */
     inicializarRangoCantidad() {
         const cantidadMin = document.getElementById('cantidadMin');
         const cantidadMax = document.getElementById('cantidadMax');
@@ -992,7 +1131,6 @@ class SearchAndFilterHandler {
         const cantidadMinValue = document.getElementById('cantidadMinValue');
         const cantidadMaxValue = document.getElementById('cantidadMaxValue');
         
-        // Text inputs
         cantidadMin?.addEventListener('change', (e) => {
             const value = parseInt(e.target.value, 10) || 0;
             this.almacen.actualizarFiltro('cantidadMin', value);
@@ -1007,7 +1145,6 @@ class SearchAndFilterHandler {
             if (cantidadMaxValue) cantidadMaxValue.textContent = value;
         });
         
-        // Range sliders
         cantidadRangeMin?.addEventListener('input', (e) => {
             const value = parseInt(e.target.value, 10);
             if (cantidadMin) cantidadMin.value = value;
@@ -1023,61 +1160,69 @@ class SearchAndFilterHandler {
         });
     }
 
+    /**
+     * Resetea todos los controles de filtro a sus valores por defecto
+     * Sincroniza con el método resetearFiltros() de la clase Almacen
+     */
     resetearTodosFiltros() {
-        // Reset search
+        // Limpia la búsqueda
         if (this.searchInput) this.searchInput.value = '';
         this.clearSearchBtn?.classList.remove('visible');
         
-        // Reset sort
+        // Resetea ordenamiento
         const sortSelect = document.getElementById('sortSelect');
         if (sortSelect) sortSelect.value = 'nombre-asc';
         
-        // Reset price range
-        const precioMin = document.getElementById('precioMin');
-        const precioMax = document.getElementById('precioMax');
-        const precioRangeMin = document.getElementById('precioRangeMin');
-        const precioRangeMax = document.getElementById('precioRangeMax');
-        const precioMinValue = document.getElementById('precioMinValue');
-        const precioMaxValue = document.getElementById('precioMaxValue');
+        // Resetea rango de precios
+        this.resetearRango('precio', 0, 1000);
         
-        if (precioMin) precioMin.value = '';
-        if (precioMax) precioMax.value = '';
-        if (precioRangeMin) precioRangeMin.value = 0;
-        if (precioRangeMax) precioRangeMax.value = 1000;
-        if (precioMinValue) precioMinValue.textContent = '€0';
-        if (precioMaxValue) precioMaxValue.textContent = '€1000';
+        // Resetea rango de cantidades
+        this.resetearRango('cantidad', 0, 500);
         
-        // Reset quantity range
-        const cantidadMin = document.getElementById('cantidadMin');
-        const cantidadMax = document.getElementById('cantidadMax');
-        const cantidadRangeMin = document.getElementById('cantidadRangeMin');
-        const cantidadRangeMax = document.getElementById('cantidadRangeMax');
-        const cantidadMinValue = document.getElementById('cantidadMinValue');
-        const cantidadMaxValue = document.getElementById('cantidadMaxValue');
+        // Marca todos los checkboxes
+        ['filterEnStock', 'filterSinStock', 'filterStockCritico'].forEach(id => {
+            const checkbox = document.getElementById(id);
+            if (checkbox) checkbox.checked = true;
+        });
         
-        if (cantidadMin) cantidadMin.value = '';
-        if (cantidadMax) cantidadMax.value = '';
-        if (cantidadRangeMin) cantidadRangeMin.value = 0;
-        if (cantidadRangeMax) cantidadRangeMax.value = 500;
-        if (cantidadMinValue) cantidadMinValue.textContent = '0';
-        if (cantidadMaxValue) cantidadMaxValue.textContent = '500';
-        
-        // Reset checkboxes
-        const filterEnStock = document.getElementById('filterEnStock');
-        const filterSinStock = document.getElementById('filterSinStock');
-        const filterStockCritico = document.getElementById('filterStockCritico');
-        
-        if (filterEnStock) filterEnStock.checked = true;
-        if (filterSinStock) filterSinStock.checked = true;
-        if (filterStockCritico) filterStockCritico.checked = true;
-        
-        // Reset almacen filters
+        // Resetea los filtros en el almacén
         this.almacen.resetearFiltros();
+    }
+
+    /**
+     * Función auxiliar para resetear controles de rango
+     * @param {string} tipo - 'precio' o 'cantidad'
+     * @param {number} min - Valor mínimo por defecto
+     * @param {number} max - Valor máximo por defecto
+     */
+    resetearRango(tipo, min, max) {
+        const minInput = document.getElementById(`${tipo}Min`);
+        const maxInput = document.getElementById(`${tipo}Max`);
+        const minSlider = document.getElementById(`${tipo}RangeMin`);
+        const maxSlider = document.getElementById(`${tipo}RangeMax`);
+        const minLabel = document.getElementById(`${tipo}MinValue`);
+        const maxLabel = document.getElementById(`${tipo}MaxValue`);
+        
+        if (minInput) minInput.value = '';
+        if (maxInput) maxInput.value = '';
+        if (minSlider) minSlider.value = min;
+        if (maxSlider) maxSlider.value = max;
+        
+        if (minLabel) {
+            minLabel.textContent = tipo === 'precio' ? `€${min}` : min;
+        }
+        if (maxLabel) {
+            maxLabel.textContent = tipo === 'precio' ? `€${max}` : max;
+        }
     }
 }
 
+// ============================================================================
+// CLASE DE MENÚ (IMPORTAR/EXPORTAR/LIMPIAR)
+// ============================================================================
+
 /**
- * Menu handler for import/export/clear operations
+ * Maneja el menú hamburguesa y las operaciones de importar, exportar y limpiar
  */
 class MenuHandler {
     constructor(almacen) {
@@ -1089,62 +1234,77 @@ class MenuHandler {
         this.inicializarEventos();
     }
 
+    /**
+     * Configura event listeners del menú
+     */
     inicializarEventos() {
-        // Toggle menu
+        // Toggle del menú hamburguesa
         this.menuToggle?.addEventListener('click', () => this.toggleMenu());
         
-        // Close menu when clicking outside
+        // Cierra el menú al hacer clic fuera del header
         document.addEventListener('click', (e) => {
             if (!e.target.closest('header')) {
                 this.closeMenu();
             }
         });
         
-        // Import JSON
+        // Opciones del menú
         document.getElementById('importarJson')?.addEventListener('click', () => {
             this.closeMenu();
             this.importarJSON();
         });
         
-        // Export JSON
         document.getElementById('exportarJson')?.addEventListener('click', () => {
             this.closeMenu();
             this.exportarJSON();
         });
         
-        // Clear inventory
         document.getElementById('limpiarInventario')?.addEventListener('click', () => {
             this.closeMenu();
             this.limpiarInventario();
         });
         
-        // File input change
+        // Listener del input de archivo
         this.fileInput?.addEventListener('change', (e) => {
             this.procesarArchivoImportado(e);
         });
     }
 
+    /**
+     * Abre o cierra el menú dropdown
+     */
     toggleMenu() {
         const isActive = this.menuDropdown.classList.toggle('active');
         this.menuToggle.classList.toggle('active');
         this.menuToggle.setAttribute('aria-expanded', isActive);
     }
 
+    /**
+     * Cierra el menú dropdown
+     */
     closeMenu() {
         this.menuDropdown.classList.remove('active');
         this.menuToggle.classList.remove('active');
         this.menuToggle.setAttribute('aria-expanded', 'false');
     }
 
+    /**
+     * Activa el selector de archivos para importar JSON
+     */
     importarJSON() {
         this.fileInput.click();
     }
 
+    /**
+     * Procesa el archivo JSON seleccionado
+     * @param {Event} e - Evento change del input file
+     */
     async procesarArchivoImportado(e) {
         const file = e.target.files[0];
         
         if (!file) return;
         
+        // Valida que sea un archivo JSON
         if (!file.name.endsWith('.json')) {
             alert('Por favor, seleccione un archivo JSON válido.');
             return;
@@ -1157,11 +1317,14 @@ class MenuHandler {
             console.error('Import error:', error);
             alert(`✗ Error al importar:\n\n${error.message}`);
         } finally {
-            // Reset file input
+            // Resetea el input para permitir importar el mismo archivo de nuevo
             this.fileInput.value = '';
         }
     }
 
+    /**
+     * Exporta el inventario a un archivo JSON
+     */
     exportarJSON() {
         if (this.almacen.productos.length === 0) {
             alert('No hay productos para exportar.');
@@ -1177,6 +1340,9 @@ class MenuHandler {
         }
     }
 
+    /**
+     * Limpia todo el inventario con doble confirmación
+     */
     limpiarInventario() {
         if (this.almacen.productos.length === 0) {
             alert('El inventario ya está vacío.');
@@ -1184,6 +1350,8 @@ class MenuHandler {
         }
         
         const count = this.almacen.productos.length;
+        
+        // Primera confirmación
         const confirmacion = confirm(
             `⚠️ ADVERTENCIA\n\n` +
             `Está a punto de eliminar TODOS los productos del inventario.\n\n` +
@@ -1193,7 +1361,7 @@ class MenuHandler {
         );
         
         if (confirmacion) {
-            // Double confirmation for safety
+            // Segunda confirmación para seguridad extra
             const doubleCheck = confirm(
                 `¿Está COMPLETAMENTE seguro?\n\n` +
                 `Se eliminarán ${count} productos permanentemente.`
@@ -1207,31 +1375,32 @@ class MenuHandler {
     }
 }
 
+// ============================================================================
+// INICIALIZACIÓN DE LA APLICACIÓN
+// ============================================================================
+
 /**
- * Initialize application when DOM is ready
+ * Punto de entrada principal de la aplicación
+ * Se ejecuta cuando el DOM está completamente cargado
  */
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        // Create warehouse instance
+        // Crea la instancia principal del almacén
         const almacen = new Almacen();
         
-        // Load products
+        // Carga datos desde localStorage o archivo JSON
         await almacen.cargarDesdeLocalStorage();
         
-        // Display products
+        // Renderiza la tabla inicial
         almacen.mostrarProductos();
         
-        // Initialize form
+        // Inicializa todos los módulos de la interfaz
         const formulario = new FormularioProducto(almacen);
-        
-        // Initialize search and filters
         const searchFilter = new SearchAndFilterHandler(almacen);
-        
-        // Initialize menu
         const menu = new MenuHandler(almacen);
         
-        console.log('Warehouse application initialized successfully');
+        console.log('✓ Warehouse application initialized successfully');
     } catch (error) {
-        console.error('Error initializing application:', error);
+        console.error('✗ Error initializing application:', error);
     }
 });
